@@ -3,7 +3,8 @@ import Foundation
 /// Wi-Fi 采样落盘。按月一个 CSV，写的是聚合行（中位数 + 极值），不是瞬时值——
 /// 实测原地不动 RSSI 也会在 4 dBm 范围内每 0.12 秒跳一次，逐条存瞬时值只是把抖动存下来。
 ///
-/// 数据落 `~/Library/Application Support/EyeBreak/`。
+/// 数据默认落 `~/Library/Application Support/EyeBreak/`，可用
+/// `defaults write io.github.tinkqw.eyebreak WifiLogDirectory <目录>` 改。
 final class WifiLogger {
 
     struct Row {
@@ -36,10 +37,16 @@ final class WifiLogger {
     }()
 
     init(directory: URL? = nil) {
-        self.dir = directory
-            ?? FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/EyeBreak", isDirectory: true)
+        self.dir = directory ?? Self.defaultDirectory
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+
+    static var defaultDirectory: URL {
+        if let custom = UserDefaults.standard.string(forKey: "WifiLogDirectory"), !custom.isEmpty {
+            return URL(fileURLWithPath: (custom as NSString).expandingTildeInPath, isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/EyeBreak", isDirectory: true)
     }
 
     func fileURL(for date: Date) -> URL {

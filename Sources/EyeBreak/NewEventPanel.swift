@@ -10,15 +10,20 @@ final class NewEventPanelController {
         self.calendar = calendar
     }
 
-    func show() {
+    /// `start` 为空 = 下一个整点 / 半点（菜单入口）；日历面板选了别的日子时传那天的默认时刻。
+    /// 小窗已开着时：不传就原样拉到前面（保住没打完的字），传了就按新日期重开。
+    func show(start: Date? = nil) {
         if let panel {
-            NSApp.activate(ignoringOtherApps: true)
-            panel.makeKeyAndOrderFront(nil)
-            return
+            if start == nil {
+                NSApp.activate(ignoringOtherApps: true)
+                panel.makeKeyAndOrderFront(nil)
+                return
+            }
+            close()
         }
         let view = NewEventView(
             calendar: calendar,
-            initialStart: Self.nextHalfHour(),
+            initialStart: start ?? Self.nextHalfHour(),
             onClose: { [weak self] in self?.close() }
         )
         let panel = NSPanel(
@@ -45,6 +50,14 @@ final class NewEventPanelController {
     private func close() {
         panel?.close()
         panel = nil
+    }
+
+    /// 日历里选中某天时的默认开始时间：今天 = 下一个整点 / 半点，别的日子 = 当天 10:00
+    static func defaultStart(on day: Date, now: Date = Date()) -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = FeishuCalendar.timeZone
+        if cal.isDate(day, inSameDayAs: now) { return nextHalfHour(from: now) }
+        return cal.date(bySettingHour: 10, minute: 0, second: 0, of: cal.startOfDay(for: day))!
     }
 
     /// 默认开始时间：下一个整点或半点
